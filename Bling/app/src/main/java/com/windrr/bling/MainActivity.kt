@@ -22,11 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.windrr.bling.ui.HomeScreen
+import com.windrr.bling.ui.PlayerScreen
 import com.windrr.bling.ui.Screen
 import com.windrr.bling.ui.theme.BlingLedTheme
 import kotlinx.coroutines.delay
@@ -39,6 +44,9 @@ val NeonPink = Color(0xFFFF00FF)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        window.setBackgroundDrawableResource(android.R.color.black)
+
         setContent {
             BlingLedTheme {
                 BlingApp()
@@ -66,57 +74,45 @@ fun BlingApp() {
             // [화면 1] 홈 (설정창)
             composable(route = Screen.Home.route) {
                 HomeScreen(
-                    onPlayClick = {
-                        // Play 버튼 누르면 플레이어 화면으로 이동
-                        navController.navigate(Screen.Player.route)
+                    onPlayClick = { text, color, size, speed ->
+                        val colorInt = color.toArgb()
+                        val route = "${Screen.Player.route}/$text/$colorInt/$size/$speed"
+                        navController.navigate(route)
                     }
                 )
             }
 
             // [화면 2] 플레이어 (전광판)
-            composable(route = Screen.Player.route) {
+            composable(
+                // 1. 주소 뒤에 받아올 변수 구멍들을 뚫어줍니다.
+                route = "${Screen.Player.route}/{text}/{color}/{size}/{speed}",
+
+                // 2. 각 변수가 어떤 타입인지(글자, 숫자 등) 알려줍니다.
+                arguments = listOf(
+                    navArgument("text") { type = NavType.StringType },
+                    navArgument("color") { type = NavType.IntType },
+                    navArgument("size") { type = NavType.FloatType },
+                    navArgument("speed") { type = NavType.FloatType }
+                )
+            ) { backStackEntry ->
+                // 3. 넘어온 보따리(backStackEntry)에서 데이터를 꺼냅니다. (없으면 기본값 사용)
+                val text = backStackEntry.arguments?.getString("text") ?: "BLING"
+                val colorInt = backStackEntry.arguments?.getInt("color") ?: Color.White.toArgb()
+                val size = backStackEntry.arguments?.getFloat("size") ?: 100f
+                val speed = backStackEntry.arguments?.getFloat("speed") ?: 0.5f
+
+                // 4. 꺼낸 데이터를 PlayerScreen에 전달합니다.
                 PlayerScreen(
+                    text = text,
+                    color = Color(colorInt),
+                    size = size,
+                    speed = speed,
                     onBackClick = {
-                        // 뒤로가기 누르면 홈으로 복귀
                         navController.popBackStack()
                     }
                 )
             }
         }
-    }
-}
-
-// --- 아래는 일단 껍데기(Skeleton) UI 입니다. 나중에 파일 분리할 예정 ---
-
-@Composable
-fun HomeScreen(onPlayClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(NeonBlack),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "SETTINGS (Home)\nTouch to Play ▶️",
-            color = Color.White,
-            modifier = Modifier.clickable { onPlayClick() } // 임시 클릭 이벤트
-        )
-    }
-}
-
-@Composable
-fun PlayerScreen(onBackClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "LED SCROLLER RUNNING...\nTouch to Back",
-            color = NeonGreen,
-            modifier = Modifier.clickable { onBackClick() }
-        )
     }
 }
 
