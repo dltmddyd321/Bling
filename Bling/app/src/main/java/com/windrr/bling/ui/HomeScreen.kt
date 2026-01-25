@@ -1,8 +1,14 @@
 package com.windrr.bling.ui
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -16,6 +22,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -23,6 +31,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.github.skydoves.colorpicker.compose.ColorEnvelope
+import com.github.skydoves.colorpicker.compose.HsvColorPicker
+import com.github.skydoves.colorpicker.compose.rememberColorPickerController
 import com.windrr.bling.NeonPink
 import com.windrr.bling.ui.theme.DarkGray
 import com.windrr.bling.ui.theme.NeonBlack
@@ -35,24 +47,24 @@ import com.windrr.bling.ui.theme.TextGray
 fun HomeScreen(
     onPlayClick: (text: String, color: Color, size: Float, speed: Float) -> Unit
 ) {
-    // 1. 상태 관리 (사용자가 입력하는 값들)
     var inputText by remember { mutableStateOf("I LOVE YOU") }
     var selectedColor by remember { mutableStateOf(NeonGreen) }
     var textSize by remember { mutableFloatStateOf(100f) } // 50f ~ 200f
     var scrollSpeed by remember { mutableFloatStateOf(0.5f) } // 0f ~ 1f
+    var showColorPicker by remember { mutableStateOf(false) }
+    val colorPickerController = rememberColorPickerController()
 
-    // 색상 팔레트 (미리 정의)
     val colorPalette =
         listOf(NeonGreen, NeonPink, NeonBlue, NeonYellow, Color.White, Color.Red, Color(0xFFFF9800))
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(NeonBlack) // 배경은 리얼 블랙
+            .background(NeonBlack)
+            .navigationBarsPadding()
             .padding(16.dp)
-            .padding(top = 32.dp) // 상태바 여백
+            .padding(top = 32.dp)
     ) {
-        // --- [A. 미리보기 영역] ---
         Text(text = "PREVIEW", color = TextGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -64,26 +76,23 @@ fun HomeScreen(
                     2.dp,
                     Brush.linearGradient(listOf(NeonBlue, NeonPink)),
                     RoundedCornerShape(12.dp)
-                ) // 그라데이션 테두리
+                )
                 .background(DarkGray, RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            // 실제 마퀴(Marquee) 효과는 PlayerScreen에서 구현하고, 여기선 느낌만 냄
             Text(
                 text = inputText.ifEmpty { "Text Here" },
                 color = selectedColor,
-                fontSize = (textSize / 3).sp, // 미리보기니까 1/3 크기로 축소
+                fontSize = (textSize / 3).sp,
                 fontWeight = FontWeight.Black,
-                maxLines = 1
+                maxLines = 1,
+                modifier = Modifier.wrapContentWidth(unbounded = true)
             )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- [B. 컨트롤 패널] ---
-
-        // 1. 텍스트 입력
         NeonTextField(
             value = inputText,
             onValueChange = { if (it.length <= 30) inputText = it } // 글자수 제한
@@ -91,22 +100,84 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 2. 색상 선택
-        Text(text = "COLOR", color = TextGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Text(text = "COLOR", color = TextGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+            // 깜빡이는 힌트 텍스트로 시선 끌기
+            val infiniteTransition = rememberInfiniteTransition(label = "scroll_hint")
+            val alpha by infiniteTransition.animateFloat(
+                initialValue = 0.3f, targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
+                label = "alpha"
+            )
+
+            Text(
+                text = "SWIPE >>>",
+                color = NeonGreen.copy(alpha = alpha),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            items(colorPalette) { color ->
-                ColorChip(
-                    color = color,
-                    isSelected = color == selectedColor,
-                    onClick = { selectedColor = color }
-                )
+
+        // 2. 리스트에 '페이딩 엣지(안개)' 효과 주기
+        Box(contentAlignment = Alignment.CenterEnd) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                // 오른쪽 끝에 그라데이션이 덮일 공간(50dp)만큼 패딩을 더 줍니다.
+                contentPadding = PaddingValues(end = 50.dp)
+            ) {
+                // 기존 프리셋 색상들
+                items(colorPalette) { color ->
+                    ColorChip(
+                        color = color,
+                        isSelected = color == selectedColor,
+                        onClick = { selectedColor = color }
+                    )
+                }
+
+                // 무지개 버튼 (커스텀)
+                item {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.sweepGradient(
+                                    listOf(Color.Red, Color.Green, Color.Blue, Color.Red)
+                                )
+                            )
+                            .clickable { showColorPicker = true }
+                            .then(
+                                if (!colorPalette.contains(selectedColor))
+                                    Modifier.border(3.dp, Color.White, CircleShape)
+                                else Modifier
+                            )
+                    )
+                }
             }
+
+            // ★ [핵심] 오른쪽 끝을 자연스럽게 가리는 '어둠의 안개'
+            Box(
+                modifier = Modifier
+                    .width(50.dp) // 너비는 적당히
+                    .height(40.dp) // 칩 높이랑 똑같이
+                    .background(
+                        Brush.horizontalGradient(
+                            // 투명 -> 리얼 블랙 (자연스럽게 사라짐)
+                            colors = listOf(Color.Transparent, NeonBlack)
+                        )
+                    )
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 3. 사이즈 조절
         ControlSlider(
             label = "SIZE",
             value = textSize,
@@ -117,7 +188,6 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 4. 속도 조절
         ControlSlider(
             label = "SPEED",
             value = scrollSpeed,
@@ -126,10 +196,7 @@ fun HomeScreen(
             accentColor = NeonPink
         )
 
-        Spacer(modifier = Modifier.weight(1f)) // 남은 공간 밀어내기
-
-        // --- [C. 플레이 버튼 & 광고] ---
-        // (광고는 나중에 넣을 자리) Box { Text("Ad Banner Here", color = Color.Gray) }
+        Spacer(modifier = Modifier.weight(1f))
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -138,12 +205,12 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape), // 은은한 테두리
+                .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
             colors = ButtonDefaults.buttonColors(
                 containerColor = NeonGreen
             ),
             shape = CircleShape,
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 10.dp) // 그림자 빡!
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 10.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -162,14 +229,61 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp)) // 하단 여백
+        Spacer(modifier = Modifier.height(48.dp))
+    }
+
+    if (showColorPicker) {
+        Dialog(onDismissRequest = { showColorPicker = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkGray)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "CUSTOM NEON",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    HsvColorPicker(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .padding(10.dp),
+                        controller = colorPickerController,
+                        onColorChanged = { colorEnvelope: ColorEnvelope ->
+                             selectedColor = colorEnvelope.color
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            selectedColor = colorPickerController.selectedColor.value
+                            showColorPicker = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("SELECT", color = NeonBlack, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }
 
-// --- [Components] 파일 분리 안 하고 일단 여기에 둡니다 (복붙 편의성) ---
-
 @Composable
 fun NeonTextField(value: String, onValueChange: (String) -> Unit) {
+    val focusRequester = remember { FocusRequester() }
+
     Column {
         Text(text = "TEXT", color = TextGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
@@ -178,11 +292,20 @@ fun NeonTextField(value: String, onValueChange: (String) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(DarkGray, RoundedCornerShape(12.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    focusRequester.requestFocus()
+                }
                 .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
                 textStyle = TextStyle(
                     color = Color.White,
                     fontSize = 18.sp,

@@ -40,6 +40,7 @@ android {
 }
 
 dependencies {
+    implementation("com.github.skydoves:colorpicker-compose:1.1.0")
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
