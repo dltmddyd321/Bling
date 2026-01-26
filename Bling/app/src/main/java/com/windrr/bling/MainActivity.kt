@@ -74,9 +74,9 @@ fun BlingApp() {
             // [화면 1] 홈 (설정창)
             composable(route = Screen.Home.route) {
                 HomeScreen(
-                    onPlayClick = { text, color, size, speed ->
+                    onPlayClick = { text, color, size, speed, isBlinkMode ->
                         val colorInt = color.toArgb()
-                        val route = "${Screen.Player.route}/$text/$colorInt/$size/$speed"
+                        val route = "${Screen.Player.route}/$text/$colorInt/$size/$speed/$isBlinkMode"
                         navController.navigate(route)
                     }
                 )
@@ -84,32 +84,28 @@ fun BlingApp() {
 
             // [화면 2] 플레이어 (전광판)
             composable(
-                // 1. 주소 뒤에 받아올 변수 구멍들을 뚫어줍니다.
-                route = "${Screen.Player.route}/{text}/{color}/{size}/{speed}",
-
-                // 2. 각 변수가 어떤 타입인지(글자, 숫자 등) 알려줍니다.
+                route = "${Screen.Player.route}/{text}/{color}/{size}/{speed}/{isBlink}",
                 arguments = listOf(
                     navArgument("text") { type = NavType.StringType },
                     navArgument("color") { type = NavType.IntType },
                     navArgument("size") { type = NavType.FloatType },
-                    navArgument("speed") { type = NavType.FloatType }
+                    navArgument("speed") { type = NavType.FloatType },
+                    navArgument("isBlink") { type = NavType.BoolType }
                 )
             ) { backStackEntry ->
-                // 3. 넘어온 보따리(backStackEntry)에서 데이터를 꺼냅니다. (없으면 기본값 사용)
                 val text = backStackEntry.arguments?.getString("text") ?: "BLING"
                 val colorInt = backStackEntry.arguments?.getInt("color") ?: Color.White.toArgb()
                 val size = backStackEntry.arguments?.getFloat("size") ?: 100f
                 val speed = backStackEntry.arguments?.getFloat("speed") ?: 0.5f
+                val isBlinkMode = backStackEntry.arguments?.getBoolean("isBlink") ?: false
 
-                // 4. 꺼낸 데이터를 PlayerScreen에 전달합니다.
                 PlayerScreen(
                     text = text,
                     color = Color(colorInt),
                     size = size,
                     speed = speed,
-                    onBackClick = {
-                        navController.popBackStack()
-                    }
+                    isBlinkMode = isBlinkMode,
+                    onBackClick = { navController.popBackStack() }
                 )
             }
         }

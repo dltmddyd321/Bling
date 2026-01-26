@@ -12,9 +12,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.*
@@ -45,7 +47,7 @@ import com.windrr.bling.ui.theme.TextGray
 
 @Composable
 fun HomeScreen(
-    onPlayClick: (text: String, color: Color, size: Float, speed: Float) -> Unit
+    onPlayClick: (text: String, color: Color, size: Float, speed: Float, isBlinkMode: Boolean) -> Unit
 ) {
     var inputText by remember { mutableStateOf("I LOVE YOU") }
     var selectedColor by remember { mutableStateOf(NeonGreen) }
@@ -57,11 +59,15 @@ fun HomeScreen(
     val colorPalette =
         listOf(NeonGreen, NeonPink, NeonBlue, NeonYellow, Color.White, Color.Red, Color(0xFFFF9800))
 
+    var isBlinkMode by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(NeonBlack)
             .navigationBarsPadding()
+            .verticalScroll(scrollState)
             .padding(16.dp)
             .padding(top = 32.dp)
     ) {
@@ -97,6 +103,31 @@ fun HomeScreen(
             value = inputText,
             onValueChange = { if (it.length <= 30) inputText = it } // 글자수 제한
         )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .background(DarkGray, CircleShape)
+                .padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ModeTabButton(
+                text = "SCROLL 📜",
+                isSelected = !isBlinkMode,
+                modifier = Modifier.weight(1f),
+                onClick = { isBlinkMode = false }
+            )
+
+            ModeTabButton(
+                text = "BLINK ⚡️",
+                isSelected = isBlinkMode,
+                modifier = Modifier.weight(1f),
+                onClick = { isBlinkMode = true }
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -196,12 +227,10 @@ fun HomeScreen(
             accentColor = NeonPink
         )
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(48.dp))
 
         Button(
-            onClick = { onPlayClick(inputText, selectedColor, textSize, scrollSpeed) },
+            onClick = { onPlayClick(inputText, selectedColor, textSize, scrollSpeed, isBlinkMode) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
@@ -229,7 +258,7 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(24.dp))
     }
 
     if (showColorPicker) {
@@ -365,6 +394,30 @@ fun ControlSlider(
                 activeTrackColor = accentColor,
                 inactiveTrackColor = DarkGray
             )
+        )
+    }
+}
+
+@Composable
+fun ModeTabButton(
+    text: String,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(CircleShape)
+            .background(if (isSelected) NeonGreen else Color.Transparent)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = if (isSelected) NeonBlack else TextGray,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp
         )
     }
 }
