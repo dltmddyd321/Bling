@@ -13,7 +13,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -30,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -51,24 +50,24 @@ fun PlayerScreen(
     isBlinkMode: Boolean,
     onBackClick: () -> Unit
 ) {
-    // 1. 화면 켜짐 유지 & 전체 화면 모드 설정
     KeepScreenOn()
     HideSystemBars()
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black) // 전광판은 무조건 리얼 블랙
+            .background(Color.Black)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null // 터치 시 물결 효과 제거 (깔끔하게)
-            ) { onBackClick() }, // 화면 아무 데나 누르면 뒤로가기
+                indication = null
+            ) { onBackClick() },
         contentAlignment = Alignment.Center
     ) {
+        val containerWidth = constraints.maxWidth.toFloat()
         if (isBlinkMode) {
             BlinkText(text, color, size, speed)
         } else {
-            MarqueeText(text, color, size, speed)
+            MarqueeText(text, color, size, speed, containerWidth)
         }
     }
 }
@@ -153,34 +152,26 @@ fun MarqueeText(
     text: String,
     color: Color,
     fontSize: Float,
-    speed: Float
+    speed: Float,
+    containerWidth: Float
 ) {
     val density = LocalDensity.current
-    val screenWidth = LocalResources.current.displayMetrics.widthPixels
-
-    // 1. [핵심] 글자 길이를 '추측'하지 않고 '정확히 측정'하는 도구
     val textMeasurer = rememberTextMeasurer()
 
-    // 2. 텍스트 스타일 정의 (측정용 & 그리기용 통일)
     val textStyle = TextStyle(
         fontSize = fontSize.sp,
         fontWeight = FontWeight.Black,
         textAlign = TextAlign.Center
     )
 
-    // 3. 실제 텍스트가 차지하는 너비(px)를 계산
     val textLayoutResult = remember(text, fontSize) {
         textMeasurer.measure(text, textStyle)
     }
     val actualTextWidth = textLayoutResult.size.width
 
-    // 4. 애니메이션 시작/끝 지점 설정
-    val startX = screenWidth.toFloat()
-    // 끝 지점: 글자 길이만큼 왼쪽으로 가고, 혹시 모르니 화면 너비만큼 더 밀어버림 (절대 안 잘리게)
-    val endX = -(actualTextWidth.toFloat() + screenWidth.toFloat())
+    val startX = containerWidth
+    val endX = -(actualTextWidth.toFloat() + containerWidth)
 
-    // 5. 속도에 따른 시간 계산 (길이가 길수록 시간 더 줌)
-    // 텍스트 길이 + 화면 너비를 이동해야 하므로 전체 이동 거리를 기준으로 계산
     val totalDistance = startX - endX
     val duration = (totalDistance / (speed * 0.5f)).toInt().coerceAtLeast(1000)
 
@@ -196,7 +187,6 @@ fun MarqueeText(
         label = "offsetX"
     )
 
-    // 6. 텍스트 그리기
     Text(
         text = text,
         color = color,
