@@ -3,6 +3,7 @@ package com.windrr.bling.ui
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -12,6 +13,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +30,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -53,14 +56,22 @@ fun PlayerScreen(
     KeepScreenOn()
     HideSystemBars()
 
+    val context = LocalContext.current
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { onBackClick() },
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        onBackClick()
+                    },
+                    onTap = {
+                        Toast.makeText(context, "화면을 두 번 터치하면 종료됩니다 👇👇", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         val containerWidth = constraints.maxWidth.toFloat()
