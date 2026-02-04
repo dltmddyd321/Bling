@@ -2,6 +2,7 @@ package com.windrr.bling.ui
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.animation.core.LinearEasing
@@ -12,9 +13,7 @@ import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -55,6 +54,8 @@ fun PlayerScreen(
 ) {
     KeepScreenOn()
     HideSystemBars()
+    ForceMaxBrightness()
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
 
     val context = LocalContext.current
 
@@ -68,7 +69,7 @@ fun PlayerScreen(
                         onBackClick()
                     },
                     onTap = {
-                        Toast.makeText(context, "화면을 두 번 터치하면 종료됩니다 👇👇", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Double tap to exit!", Toast.LENGTH_SHORT).show()
                     }
                 )
             },
@@ -172,7 +173,11 @@ fun MarqueeText(
     val textStyle = TextStyle(
         fontSize = fontSize.sp,
         fontWeight = FontWeight.Black,
-        textAlign = TextAlign.Center
+        textAlign = TextAlign.Center,
+        shadow = Shadow(
+            color = color,
+            blurRadius = 30f
+        )
     )
 
     val textLayoutResult = remember(text, fontSize) {
@@ -180,9 +185,8 @@ fun MarqueeText(
     }
     val actualTextWidth = textLayoutResult.size.width
 
+    val endX = -actualTextWidth.toFloat()
     val startX = containerWidth
-    val endX = -(actualTextWidth.toFloat() + containerWidth)
-
     val totalDistance = startX - endX
     val duration = (totalDistance / (speed * 0.5f)).toInt().coerceAtLeast(1000)
 
@@ -237,6 +241,42 @@ fun HideSystemBars() {
         onDispose {
             // 화면 나갈 때 다시 보이게 하기
             insetsController.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+}
+
+@Composable
+fun LockScreenOrientation(orientation: Int) {
+    val context = LocalContext.current
+    DisposableEffect(Unit) {
+        val activity = context as? Activity
+        val originalOrientation = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
+        // 화면에 들어올 때: 지정한 방향으로 고정
+        activity?.requestedOrientation = orientation
+
+        onDispose {
+            // 화면에서 나갈 때: 원래대로 복구 (자유 회전)
+            activity?.requestedOrientation = originalOrientation
+        }
+    }
+}
+
+@Composable
+fun ForceMaxBrightness() {
+    val context = LocalContext.current
+    DisposableEffect(Unit) {
+        val activity = context as? Activity
+        val window = activity?.window
+        val layoutParams = window?.attributes
+
+        val originalBrightness = layoutParams?.screenBrightness
+        layoutParams?.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
+        window?.attributes = layoutParams
+
+        onDispose {
+            layoutParams?.screenBrightness = originalBrightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            window?.attributes = layoutParams
         }
     }
 }
