@@ -30,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.google.android.gms.ads.MobileAds
 import com.windrr.bling.ui.HomeScreen
 import com.windrr.bling.ui.PlayerScreen
 import com.windrr.bling.ui.Screen
@@ -45,6 +46,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        MobileAds.initialize(this) {}
         window.setBackgroundDrawableResource(android.R.color.black)
 
         setContent {
